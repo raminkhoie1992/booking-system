@@ -32,10 +32,14 @@ function cancelAppointment(id) {
   const removed = appointments.splice(index, 1);
   return { ok: true, cancelled: removed[0] };
 }
-
+function ListAppointment(){
+    return appointments.slice();
+}
 console.log(book("Ali", "2026-10-10", "10:00"));
 console.log(book("Sara", "2026-10-10", "10:00"));
 console.log(book("Sara", "2026-10-10", "11:00"));
 console.log(cancelAppointment(1));
 console.log(cancelAppointment(99));
 console.log(cancelAppointment(1));
+console.log(ListAppointment());
+
