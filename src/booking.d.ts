@@ -18,8 +18,6 @@ export type CancelResult = {
     ok: true;
     cancelled: Appointment;
 };
-export declare function createAppointment(name: string, date: string, time: string): Appointment;
-export declare function isSlotTaken(date: string, time: string): boolean;
 export declare function book(name: string, date: string, time: string): BookResult;
 export declare function cancelAppointment(id: number): CancelResult;
 export declare function listAppointments(): Appointment[];

@@ -1,41 +1,35 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createAppointment = createAppointment;
-exports.isSlotTaken = isSlotTaken;
 exports.book = book;
 exports.cancelAppointment = cancelAppointment;
 exports.listAppointments = listAppointments;
-const appointments = [];
-function createAppointment(name, date, time) {
-    if (!name || !date || !time) {
-        throw new Error("name, date and time are required");
-    }
-    return { id: appointments.length + 1, name: name, date: date, time: time };
-}
-function isSlotTaken(date, time) {
-    return appointments.some(function (appointment) {
-        return appointment.date === date && appointment.time === time;
-    });
-}
+const db_js_1 = __importDefault(require("./db.js"));
 function book(name, date, time) {
-    if (isSlotTaken(date, time)) {
-        return { ok: false, message: "This slot is already booked." };
+    const existing = db_js_1.default.prepare('SELECT id FROM appointments WHERE date = ? AND time = ?').get(date, time);
+    if (existing) {
+        return { ok: false, message: 'This slot is already booked.' };
     }
-    const appointment = createAppointment(name, date, time);
-    appointments.push(appointment);
-    return { ok: true, appointment: appointment };
+    const result = db_js_1.default.prepare('INSERT INTO appointments (name, date, time) VALUES (?, ?, ?)').run(name, date, time);
+    const appointment = {
+        id: Number(result.lastInsertRowid),
+        name,
+        date,
+        time
+    };
+    return { ok: true, appointment };
 }
 function cancelAppointment(id) {
-    const index = appointments.findIndex(function (appointment) {
-        return appointment.id === id;
-    });
-    if (index === -1) {
-        return { ok: false, message: "Appointment not found." };
+    const appointment = db_js_1.default.prepare('SELECT id, name, date, time FROM appointments WHERE id = ?').get(id);
+    if (!appointment) {
+        return { ok: false, message: 'Appointment not found.' };
     }
-    const removed = appointments.splice(index, 1);
-    return { ok: true, cancelled: removed[0] };
+    db_js_1.default.prepare('DELETE FROM appointments WHERE id = ?').run(id);
+    return { ok: true, cancelled: appointment };
 }
 function listAppointments() {
-    return appointments.slice();
+    return db_js_1.default.prepare('SELECT id, name, date, time FROM appointments').all();
 }
 //# sourceMappingURL=booking.js.map

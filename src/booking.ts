@@ -1,3 +1,5 @@
+import db from './db.js';
+
 export interface Appointment {
   id: number;
   name: string;
@@ -13,41 +15,45 @@ export type CancelResult =
   | { ok: false; message: string }
   | { ok: true; cancelled: Appointment };
 
-const appointments: Appointment[] = [];
-
-export function createAppointment(name: string, date: string, time: string): Appointment {
-  if (!name || !date || !time) {
-    throw new Error("name, date and time are required");
-  }
-  return { id: appointments.length + 1, name: name, date: date, time: time };
-}
-
-export function isSlotTaken(date: string, time: string): boolean {
-  return appointments.some(function(appointment) {
-    return appointment.date === date && appointment.time === time;
-  });
-}
-
 export function book(name: string, date: string, time: string): BookResult {
-  if (isSlotTaken(date, time)) {
-    return { ok: false, message: "This slot is already booked." };
+  const existing = db.prepare(
+    'SELECT id FROM appointments WHERE date = ? AND time = ?'
+  ).get(date, time);
+
+  if (existing) {
+    return { ok: false, message: 'This slot is already booked.' };
   }
-  const appointment = createAppointment(name, date, time);
-  appointments.push(appointment);
-  return { ok: true, appointment: appointment };
+
+  const result = db.prepare(
+    'INSERT INTO appointments (name, date, time) VALUES (?, ?, ?)'
+  ).run(name, date, time);
+
+  const appointment: Appointment = {
+    id: Number(result.lastInsertRowid),
+    name,
+    date,
+    time
+  };
+
+  return { ok: true, appointment };
 }
 
 export function cancelAppointment(id: number): CancelResult {
-  const index = appointments.findIndex(function(appointment) {
-    return appointment.id === id;
-  });
-  if (index === -1) {
-    return { ok: false, message: "Appointment not found." };
+  const appointment = db.prepare(
+    'SELECT id, name, date, time FROM appointments WHERE id = ?'
+  ).get(id) as Appointment | undefined;
+
+  if (!appointment) {
+    return { ok: false, message: 'Appointment not found.' };
   }
-  const removed = appointments.splice(index, 1);
-  return { ok: true, cancelled: removed[0] as Appointment };
+
+  db.prepare('DELETE FROM appointments WHERE id = ?').run(id);
+
+  return { ok: true, cancelled: appointment };
 }
 
 export function listAppointments(): Appointment[] {
-  return appointments.slice();
+  return db.prepare(
+    'SELECT id, name, date, time FROM appointments'
+  ).all() as Appointment[];
 }
